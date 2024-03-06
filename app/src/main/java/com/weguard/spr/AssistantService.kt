@@ -1,17 +1,18 @@
 package com.weguard.spr
 
 import android.app.Service
-import android.content.Context
 import android.content.Intent
-import android.media.AudioManager
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.util.Log
 import android.widget.Toast
+import java.text.SimpleDateFormat
 import java.util.Locale
 
 class AssistantService : Service() {
@@ -19,6 +20,10 @@ class AssistantService : Service() {
     private lateinit var textToSpeech: TextToSpeech
     private lateinit var recognizerIntent: Intent
     private val speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this@AssistantService)
+    private var handler = Handler(Looper.getMainLooper())
+    private lateinit var runnable: Runnable
+    private var timeNow =
+        SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(System.currentTimeMillis())
 
     override fun onCreate() {
         super.onCreate()
@@ -62,8 +67,8 @@ class AssistantService : Service() {
                     val speechResults =
                         results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     if (!speechResults.isNullOrEmpty()) {
-                        Toast.makeText(this@AssistantService, speechResults[0], Toast.LENGTH_SHORT)
-                            .show()
+//                        Toast.makeText(this@AssistantService, speechResults[0], Toast.LENGTH_SHORT)
+//                            .show()
                         textToSpeech = TextToSpeech(applicationContext) { status ->
                             if (status == TextToSpeech.SUCCESS) {
                                 val speakResult = textToSpeech.setLanguage(Locale.getDefault())
@@ -81,12 +86,33 @@ class AssistantService : Service() {
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
-                            textToSpeech.speak(
-                                "Hi, I'm Chitra",
-                                TextToSpeech.QUEUE_FLUSH,
-                                null,
-                                null
-                            )
+
+                            if (speechResults[0].contains(
+                                    "time",
+                                    ignoreCase = true
+                                )
+                            ) {
+                                textToSpeech.speak(
+                                    "Hi, Current Time is $timeNow",
+                                    TextToSpeech.QUEUE_FLUSH,
+                                    null,
+                                    null
+                                )
+                            } else if (speechResults[0].contains("bye", ignoreCase = true)) {
+                                textToSpeech.speak(
+                                    "Bye...Take care",
+                                    TextToSpeech.QUEUE_FLUSH,
+                                    null,
+                                    null
+                                )
+                            } else {
+                                textToSpeech.speak(
+                                    "Hi, I'm Chitra",
+                                    TextToSpeech.QUEUE_FLUSH,
+                                    null,
+                                    null
+                                )
+                            }
                         }
                     } else {
                         Toast.makeText(this@AssistantService, "No results", Toast.LENGTH_SHORT)
@@ -113,17 +139,24 @@ class AssistantService : Service() {
             )
                 .show()
         }
+        runnable = object : Runnable {
+            override fun run() {
+                speechRecognizer.startListening(recognizerIntent)
+                handler.postDelayed(this, 1000)
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Toast.makeText(this, "Service Started...!", Toast.LENGTH_SHORT).show()
-        speechRecognizer.startListening(recognizerIntent)
+        handler.post(runnable)
         return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onDestroy() {
         super.onDestroy()
         speechRecognizer.stopListening()
+        handler.removeCallbacks(runnable)
     }
 
     override fun onBind(intent: Intent?): IBinder? {
