@@ -34,11 +34,11 @@ class MainActivity : ComponentActivity() {
         ) {
             ActivityCompat.requestPermissions(
                 this@MainActivity as Activity,
-                arrayOf(Manifest.permission.RECORD_AUDIO),
+                arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CALL_PHONE),
                 99
             )
         } else {
-            Toast.makeText(this@MainActivity, "Record Audio Permission granted", Toast.LENGTH_SHORT)
+            Toast.makeText(this@MainActivity, "Record Audio and Call Permissions granted", Toast.LENGTH_SHORT)
                 .show()
         }
         setContent {

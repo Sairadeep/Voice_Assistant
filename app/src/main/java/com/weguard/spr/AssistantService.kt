@@ -2,6 +2,7 @@ package com.weguard.spr
 
 import android.app.Service
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
@@ -23,7 +24,7 @@ class AssistantService : Service() {
     private var handler = Handler(Looper.getMainLooper())
     private lateinit var runnable: Runnable
     private var timeNow =
-        SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(System.currentTimeMillis())
+        SimpleDateFormat("h:mm a", Locale.getDefault()).format(System.currentTimeMillis())
 
     override fun onCreate() {
         super.onCreate()
@@ -71,7 +72,7 @@ class AssistantService : Service() {
 //                            .show()
                         textToSpeech = TextToSpeech(applicationContext) { status ->
                             if (status == TextToSpeech.SUCCESS) {
-                                val speakResult = textToSpeech.setLanguage(Locale.getDefault())
+                                val speakResult = textToSpeech.setLanguage(Locale.US)
                                 if (speakResult == TextToSpeech.LANG_MISSING_DATA || speakResult == TextToSpeech.LANG_NOT_SUPPORTED) {
                                     Toast.makeText(
                                         this@AssistantService,
@@ -86,32 +87,66 @@ class AssistantService : Service() {
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
-
-                            if (speechResults[0].contains(
+                            if (speechResults[0].contains("SOS", ignoreCase = true)) {
+                                Log.d("VoiceAssistantState", "Ella reporting...!")
+                                textToSpeech.speak(
+                                    "Hi, I'm Ella from WeGuard",
+                                    TextToSpeech.QUEUE_FLUSH,
+                                    null,
+                                    null
+                                )
+                                return@TextToSpeech
+                            }
+                            when {
+                                speechResults[0].contains(
                                     "time",
                                     ignoreCase = true
-                                )
-                            ) {
-                                textToSpeech.speak(
-                                    "Hi, Current Time is $timeNow",
-                                    TextToSpeech.QUEUE_FLUSH,
-                                    null,
-                                    null
-                                )
-                            } else if (speechResults[0].contains("bye", ignoreCase = true)) {
-                                textToSpeech.speak(
-                                    "Bye...Take care",
-                                    TextToSpeech.QUEUE_FLUSH,
-                                    null,
-                                    null
-                                )
-                            } else {
-                                textToSpeech.speak(
-                                    "Hi, I'm Chitra",
-                                    TextToSpeech.QUEUE_FLUSH,
-                                    null,
-                                    null
-                                )
+                                ) -> {
+                                    textToSpeech.speak(
+                                        "Okay, Current Time is $timeNow",
+                                        TextToSpeech.QUEUE_FLUSH,
+                                        null,
+                                        null
+                                    )
+                                }
+
+                                speechResults[0].contains(
+                                    "bye",
+                                    ignoreCase = true
+                                ) -> {
+                                    textToSpeech.speak(
+                                        "Bye...Take care",
+                                        TextToSpeech.QUEUE_FLUSH,
+                                        null,
+                                        null
+                                    )
+                                }
+
+                                speechResults[0].contains(
+                                    "call chakrapani",
+                                    ignoreCase = true
+                                ) -> {
+                                    textToSpeech.speak(
+                                        "Ok, calling Chakrapani",
+                                        TextToSpeech.QUEUE_FLUSH,
+                                        null,
+                                        null
+                                    )
+//                                  but how to handle when the device is in lock state
+                                    val callIntent = Intent(Intent.ACTION_CALL)
+                                    callIntent.data = Uri.parse("tel: ${8801874959}")
+                                    callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    this@AssistantService.startActivity(callIntent)
+                                }
+
+                                else -> {
+                                    textToSpeech.speak(
+                                        "Sorry, I couldn't help you out with this..!",
+                                        TextToSpeech.QUEUE_FLUSH,
+                                        null,
+                                        null
+                                    )
+                                }
                             }
                         }
                     } else {
