@@ -19,6 +19,7 @@ import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.core.app.NotificationCompat
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -134,14 +135,20 @@ class AssistantService : Service() {
             }
 
             override fun onResults(results: Bundle?) {
+                val timerDuration = mutableLongStateOf(60000)
                 val speechResults =
                     results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                timer = object : CountDownTimer(15000, 1000) {
+                timer = object : CountDownTimer(timerDuration.longValue, 1000) {
                     override fun onTick(millisUntilFinished: Long) {
                         Log.d(
                             "timerState",
                             "Timer Running... ${(millisUntilFinished) / 1000}"
                         )
+                        val remaining = (millisUntilFinished / 1000)
+                        if (remaining < 50) {
+                            // This won't work as I'm not able to dynamically increase the count as it is possible in compose with remember.
+                            timerDuration.longValue = 100000
+                        }
                     }
 
                     override fun onFinish() {
@@ -149,6 +156,7 @@ class AssistantService : Service() {
                     }
 
                 }
+
                 if (!speechResults.isNullOrEmpty()) {
                     Log.d("VoiceAssistantState", "Current Value : ${speechResults[0]}")
                     textToSpeech = TextToSpeech(applicationContext) { status ->
@@ -185,9 +193,10 @@ class AssistantService : Service() {
                             )
                             isGreetingProvided = true
                         } else if (isGreetingProvided) {
-                            subsequentCommands(speechResults)
+                            subsequentSpeechCommands(speechResults)
+                            // Need to increase the timer dynamically and also reduce the deep sound.
                         } else {
-                            timer.onFinish()
+                            timer.cancel()
                         }
                     }
                 } else {
@@ -211,7 +220,7 @@ class AssistantService : Service() {
         speechRecognizer.startListening(recognizerIntent)
     }
 
-    private fun subsequentCommands(command: ArrayList<String>) {
+    private fun subsequentSpeechCommands(command: ArrayList<String>) {
         if (command[0].contains("time", ignoreCase = true)) {
             textToSpeech.speak(
                 "Okay, Current Time is $timeNow",
