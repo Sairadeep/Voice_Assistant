@@ -20,7 +20,10 @@ import android.speech.tts.TextToSpeech
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.NotificationCompat
+import com.google.mlkit.nl.translate.Translation
+import com.google.mlkit.nl.translate.TranslatorOptions
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -97,6 +100,7 @@ class AssistantService : Service() {
     }
 
     private fun speechRec() {
+        val newText = mutableStateOf("Hi")
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
 //        audioManager.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_MUTE, AudioManager.FLAG_PLAY_SOUND)
         recognizerIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
@@ -185,8 +189,19 @@ class AssistantService : Service() {
                             speechRecognizer.stopListening()
                             timer.start()
                             Log.d("VoiceAssistantState", "Ella reporting..: ${speechResults[0]}")
+                            val text = "Hi, I'm Ella from WeGuard"
+                            val translate =
+                                TranslatorOptions.Builder().setSourceLanguage(Locale.US.toString())
+                                    .setTargetLanguage(
+                                        Locale.FRENCH.toString()
+                                    ).build()
+                            val translator = Translation.getClient(translate)
+                            translator.translate(text).addOnSuccessListener {
+                                newText.value = it
+                                Log.d("WEware", newText.value)
+                            }
                             textToSpeech.speak(
-                                "Hi, I'm Ella from WeGuard",
+                                newText.value,
                                 TextToSpeech.QUEUE_FLUSH,
                                 null,
                                 null
@@ -253,7 +268,7 @@ class AssistantService : Service() {
             //   but how to handle when the device is in lock state
             val callIntent = Intent(Intent.ACTION_CALL)
             callIntent.data = Uri.parse("tel: ${8801874959}")
-            callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             this@AssistantService.startActivity(callIntent)
         } else {
             textToSpeech.speak(
